@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SecureAuth — Authentication System</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #080b12;
+    --surface:  #0e1320;
+    --border:   #1e2a40;
+    --accent:   #4ff0b7;
+    --accent2:  #7c6af7;
+    --danger:   #f05a7e;
+    --text:     #e8edf5;
+    --muted:    #5a6a85;
+    --glow:     0 0 30px rgba(79,240,183,.18);
+    --radius:   14px;
+    --font:     'Syne', sans-serif;
+    --mono:     'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid background ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(79,240,183,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,240,183,.04) 1px, transparent 1px);
+    background-size: 44px 44px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Blob ── */
+  .blob {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    pointer-events: none;
+    z-index: 0;
+    opacity: .35;
+  }
+  .blob-1 { width: 500px; height: 500px; background: #4ff0b7; top: -150px; right: -100px; animation: drift 12s ease-in-out infinite alternate; }
+  .blob-2 { width: 400px; height: 400px; background: #7c6af7; bottom: -100px; left: -120px; animation: drift 15s ease-in-out infinite alternate-reverse; }
+
+  @keyframes drift { from { transform: translate(0,0) scale(1); } to { transform: translate(40px,30px) scale(1.1); } }
+
+  /* ── Layout ── */
+  .app { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 48px;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(10px);
+    background: rgba(8,11,18,.7);
+    position: sticky; top: 0; z-index: 100;
+  }
+
+  .logo {
+    font-size: 1.3rem; font-weight: 800; letter-spacing: -.02em;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo span { color: var(--accent); }
+  .logo-dot {
+    width: 10px; height: 10px; background: var(--accent);
+    border-radius: 50%; box-shadow: 0 0 10px var(--accent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.6; transform:scale(.85); } }
+
+  .nav-tabs { display: flex; gap: 4px; background: var(--surface); padding: 4px; border-radius: 10px; border: 1px solid var(--border); }
+  .nav-tab {
+    padding: 8px 20px; border-radius: 7px; border: none;
+    font-family: var(--font); font-size: .85rem; font-weight: 600;
+    cursor: pointer; transition: all .2s; color: var(--muted); background: transparent;
+  }
+  .nav-tab.active { background: var(--border); color: var(--text); }
+
+  /* ── Main panels ── */
+  main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px 24px; }
+
+  .panel {
+    display: none; animation: fadeUp .4s ease forwards;
+    width: 100%; max-width: 1100px;
+  }
+  .panel.visible { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Auth card ── */
+  .auth-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 0; max-width: 900px; margin: 0 auto; border-radius: 20px; overflow: hidden; border: 1px solid var(--border); box-shadow: var(--glow), 0 40px 80px rgba(0,0,0,.5); }
+
+  .auth-aside {
+    background: linear-gradient(145deg, #0a1628 0%, #0e1d35 100%);
+    padding: 56px 48px;
+    display: flex; flex-direction: column; justify-content: center; gap: 32px;
+    position: relative; overflow: hidden;
+    border-right: 1px solid var(--border);
+  }
+  .auth-aside::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(79,240,183,.1) 0%, transparent 70%);
+  }
+
+  .aside-title { font-size: 2.4rem; font-weight: 800; line-height: 1.1; position: relative; z-index: 1; }
+  .aside-title em { color: var(--accent); font-style: normal; }
+
+  .aside-feature {
+    display: flex; align-items: flex-start; gap: 14px;
+    position: relative; z-index: 1;
+  }
+  .feature-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: rgba(79,240,183,.12); border: 1px solid rgba(79,240,183,.25);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 1rem; color: var(--accent);
+  }
+  .feature-text strong { display: block; font-size: .9rem; font-weight: 700; color: var(--text); }
+  .feature-text span { font-size: .8rem; color: var(--muted); font-family: var(--mono); }
+
+  .auth-form-wrap {
+    background: var(--surface);
+    padding: 56px 48px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+
+  .form-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 6px; }
+  .form-sub { color: var(--muted); font-size: .875rem; margin-bottom: 32px; font-family: var(--mono); }
+
+  .form-group { margin-bottom: 18px; }
+  label { display: block; font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+
+  input[type="text"], input[type="email"], input[type="password"] {
+    width: 100%; background: rgba(255,255,255,.04);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 13px 16px; font-family: var(--mono); font-size: .9rem;
+    color: var(--text); outline: none; transition: border-color .2s, box-shadow .2s;
+  }
+  input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,240,183,.12); }
+  input.error-input { border-color: var(--danger); }
+
+  .input-hint { font-size: .72rem; color: var(--muted); margin-top: 5px; font-family: var(--mono); }
+
+  .password-wrap { position: relative; }
+  .toggle-pw {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; padding: 4px;
+  }
+  .toggle-pw:hover { color: var(--accent); }
+
+  .strength-bar { height: 4px; background: var(--border); border-radius: 4px; margin-top: 8px; overflow: hidden; }
+  .strength-fill { height: 100%; border-radius: 4px; transition: width .3s, background .3s; }
+
+  .btn {
+    width: 100%; padding: 14px; border: none; border-radius: 10px;
+    font-family: var(--font); font-size: 1rem; font-weight: 700;
+    cursor: pointer; transition: all .2s; margin-top: 8px;
+  }
+  .btn-primary {
+    background: var(--accent); color: #080b12;
+    box-shadow: 0 0 20px rgba(79,240,183,.25);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 30px rgba(79,240,183,.4); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+  .form-switch { text-align: center; margin-top: 20px; font-size: .85rem; color: var(--muted); }
+  .form-switch a { color: var(--accent); text-decoration: none; font-weight: 700; cursor: pointer; }
+  .form-switch a:hover { text-decoration: underline; }
+
+  .error-msg {
+    background: rgba(240,90,126,.1); border: 1px solid rgba(240,90,126,.3);
+    color: var(--danger); padding: 10px 14px; border-radius: 8px;
+    font-size: .82rem; margin-bottom: 16px; font-family: var(--mono);
+    display: none;
+  }
+  .error-msg.show { display: block; animation: shake .35s ease; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+  }
+
+  /* ── Dashboard ── */
+  .dashboard { max-width: 900px; margin: 0 auto; }
+  .dash-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 32px; flex-wrap: wrap; gap: 16px; }
+  .dash-greeting { font-size: 2rem; font-weight: 800; }
+  .dash-greeting em { color: var(--accent); font-style: normal; }
+  .dash-sub { color: var(--muted); font-family: var(--mono); font-size: .85rem; margin-top: 4px; }
+
+  .role-badge {
+    padding: 6px 14px; border-radius: 20px; font-size: .75rem; font-weight: 700;
+    font-family: var(--mono); letter-spacing: .05em; text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .badge-admin    { background: rgba(240,90,126,.15); color: var(--danger); border: 1px solid rgba(240,90,126,.3); }
+  .badge-mod      { background: rgba(124,106,247,.15); color: var(--accent2); border: 1px solid rgba(124,106,247,.3); }
+  .badge-user     { background: rgba(79,240,183,.12); color: var(--accent); border: 1px solid rgba(79,240,183,.25); }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 24px; position: relative; overflow: hidden;
+  }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+  .stat-value { font-size: 2rem; font-weight: 800; font-family: var(--mono); }
+  .stat-label { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; margin-top: 4px; }
+
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .info-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px;
+  }
+  .info-card-title { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 16px; font-weight: 700; }
+  .info-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+  .info-row:last-child { border-bottom: none; }
+  .info-key { color: var(--muted); font-size: .82rem; font-family: var(--mono); }
+  .info-val { font-size: .82rem; font-family: var(--mono); color: var(--text); }
+
+  .btn-logout {
+    background: rgba(240,90,126,.1); color: var(--danger);
+    border: 1px solid rgba(240,90,126,.3); padding: 10px 22px;
+    border-radius: 8px; font-family: var(--font); font-size: .85rem;
+    font-weight: 700; cursor: pointer; transition: all .2s;
+  }
+  .btn-logout:hover { background: rgba(240,90,126,.2); transform: translateY(-1px); }
+
+  /* ── Architecture panel ── */
+  .arch { max-width: 900px; margin: 0 auto; }
+  .arch h2 { font-size: 1.8rem; font-weight: 800; margin-bottom: 8px; }
+  .arch-sub { color: var(--muted); font-family: var(--mono); font-size: .85rem; margin-bottom: 32px; }
+
+  .arch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .arch-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px;
+    transition: border-color .2s, transform .2s;
+  }
+  .arch-card:hover { border-color: rgba(79,240,183,.4); transform: translateY(-2px); }
+
+  .arch-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .arch-icon {
+    width: 42px; height: 42px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; flex-shrink: 0;
+  }
+  .icon-green  { background: rgba(79,240,183,.12); border: 1px solid rgba(79,240,183,.25); }
+  .icon-purple { background: rgba(124,106,247,.12); border: 1px solid rgba(124,106,247,.25); }
+  .icon-red    { background: rgba(240,90,126,.12);  border: 1px solid rgba(240,90,126,.25);  }
+  .icon-blue   { background: rgba(56,189,248,.12);  border: 1px solid rgba(56,189,248,.25);  }
+
+  .arch-card h3 { font-size: 1rem; font-weight: 800; }
+  .arch-card p  { color: var(--muted); font-size: .82rem; line-height: 1.6; }
+
+  .code-chip {
+    display: inline-block; background: rgba(255,255,255,.06);
+    border: 1px solid var(--border); border-radius: 5px;
+    padding: 2px 8px; font-family: var(--mono); font-size: .72rem;
+    color: var(--accent); margin: 2px 2px 0 0;
+  }
+  .chips { margin-top: 10px; }
+
+  /* ── Token flow ── */
+  .token-flow {
+    margin-top: 24px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 28px;
+  }
+  .token-flow h3 { font-size: 1rem; font-weight: 800; margin-bottom: 20px; }
+  .flow-steps { display: flex; align-items: center; gap: 0; flex-wrap: wrap; }
+  .flow-step {
+    background: rgba(79,240,183,.07); border: 1px solid rgba(79,240,183,.2);
+    border-radius: 8px; padding: 12px 16px;
+    font-size: .78rem; font-family: var(--mono); color: var(--accent);
+    text-align: center; flex: 1; min-width: 100px;
+  }
+  .flow-arrow { color: var(--muted); font-size: 1.2rem; padding: 0 8px; flex-shrink: 0; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 32px; right: 32px;
+    background: var(--surface); border: 1px solid var(--accent);
+    border-radius: 12px; padding: 14px 20px;
+    font-size: .85rem; font-family: var(--mono); color: var(--accent);
+    box-shadow: 0 0 30px rgba(79,240,183,.2);
+    transform: translateY(100px); opacity: 0;
+    transition: all .35s cubic-bezier(.34,1.56,.64,1);
+    z-index: 1000; max-width: 300px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* ── Responsive ── */
+  @media (max-width: 740px) {
+    .auth-layout  { grid-template-columns: 1fr; }
+    .auth-aside   { display: none; }
+    nav           { padding: 16px 20px; }
+    .auth-form-wrap { padding: 36px 28px; }
+    .stats-grid   { grid-template-columns: 1fr; }
+    .info-grid    { grid-template-columns: 1fr; }
+    .arch-grid    { grid-template-columns: 1fr; }
+    .flow-steps   { flex-direction: column; }
+    .flow-arrow   { transform: rotate(90deg); }
+  }
+</style>
+</head>
+<body>
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+
+<div class="app">
+  <nav>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      Secure<span>Auth</span>
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showPanel('auth')">Auth Demo</button>
+      <button class="nav-tab" onclick="showPanel('arch')">Architecture</button>
+    </div>
+  </nav>
+
+  <main>
+    <!-- ── Auth Panel ── -->
+    <div id="panel-auth" class="panel visible">
+      <div id="view-login" class="auth-layout">
+        <div class="auth-aside">
+          <div class="aside-title">Zero-trust<br/><em>authentication</em><br/>system.</div>
+          <div class="aside-feature">
+            <div class="feature-icon">🔒</div>
+            <div class="feature-text">
+              <strong>bcrypt password hashing</strong>
+              <span>12 salt rounds · one-way hash</span>
+            </div>
+          </div>
+          <div class="aside-feature">
+            <div class="feature-icon">⚡</div>
+            <div class="feature-text">
+              <strong>Dual-token JWT system</strong>
+              <span>15m access · 7d refresh · httpOnly</span>
+            </div>
+          </div>
+          <div class="aside-feature">
+            <div class="feature-icon">🛡</div>
+            <div class="feature-text">
+              <strong>Role-based access control</strong>
+              <span>admin · moderator · user</span>
+            </div>
+          </div>
+          <div class="aside-feature">
+            <div class="feature-icon">🔄</div>
+            <div class="feature-text">
+              <strong>Auto token refresh</strong>
+              <span>silent renewal every 14 min</span>
+            </div>
+          </div>
+        </div>
+        <div class="auth-form-wrap">
+          <div class="form-title">Welcome back</div>
+          <div class="form-sub">Sign in to your account</div>
+          <div class="error-msg" id="login-error"></div>
+          <div class="form-group">
+            <label>Email address</label>
+            <input type="email" id="login-email" placeholder="you@example.com"/>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <div class="password-wrap">
+              <input type="password" id="login-password" placeholder="••••••••"/>
+              <button class="toggle-pw" onclick="togglePw('login-password', this)">👁</button>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="handleLogin()" id="login-btn">Sign in →</button>
+          <div class="form-switch">Don't have an account? <a onclick="switchView('register')">Create one</a></div>
+        </div>
+      </div>
+
+      <div id="view-register" class="auth-layout" style="display:none">
+        <div class="auth-aside">
+          <div class="aside-title">Create your<br/><em>secure</em><br/>account.</div>
+          <div class="aside-feature">
+            <div class="feature-icon">✅</div>
+            <div class="feature-text">
+              <strong>Strong password policy</strong>
+              <span>8+ chars · upper · lower · special</span>
+            </div>
+          </div>
+          <div class="aside-feature">
+            <div class="feature-icon">📧</div>
+            <div class="feature-text">
+              <strong>Email validation</strong>
+              <span>Format checked · uniqueness enforced</span>
+            </div>
+          </div>
+          <div class="aside-feature">
+            <div class="feature-icon">🔐</div>
+            <div class="feature-text">
+              <strong>Secure session start</strong>
+              <span>Tokens issued on success</span>
+            </div>
+          </div>
+        </div>
+        <div class="auth-form-wrap">
+          <div class="form-title">Create account</div>
+          <div class="form-sub">Get started — it's free</div>
+          <div class="error-msg" id="reg-error"></div>
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="reg-username" placeholder="john_doe" maxlength="30"/>
+            <div class="input-hint">3–30 characters</div>
+          </div>
+          <div class="form-group">
+            <label>Email address</label>
+            <input type="email" id="reg-email" placeholder="you@example.com"/>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <div class="password-wrap">
+              <input type="password" id="reg-password" placeholder="••••••••" oninput="checkStrength(this.value)"/>
+              <button class="toggle-pw" onclick="togglePw('reg-password', this)">👁</button>
+            </div>
+            <div class="strength-bar"><div class="strength-fill" id="strength-fill" style="width:0%"></div></div>
+            <div class="input-hint" id="strength-label">Min 8 chars, upper, lower, number, special (@$!%*?&)</div>
+          </div>
+          <button class="btn btn-primary" onclick="handleRegister()" id="reg-btn">Create account →</button>
+          <div class="form-switch">Already have an account? <a onclick="switchView('login')">Sign in</a></div>
+        </div>
+      </div>
+
+      <!-- Dashboard -->
+      <div id="view-dashboard" style="display:none">
+        <div class="dashboard">
+          <div class="dash-header">
+            <div>
+              <div class="dash-greeting">Hey, <em id="dash-username">User</em> 👋</div>
+              <div class="dash-sub" id="dash-sub">You're authenticated and in a protected route</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <span class="role-badge" id="dash-role-badge"></span>
+              <button class="btn-logout" onclick="handleLogout()">Sign out</button>
+            </div>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value" id="stat-role">—</div>
+              <div class="stat-label">Access Role</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" style="font-size:1.1rem;color:var(--accent)" id="stat-token">Active</div>
+              <div class="stat-label">Session Status</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-expires">15m</div>
+              <div class="stat-label">Token Expires</div>
+            </div>
+          </div>
+
+          <div class="info-grid">
+            <div class="info-card">
+              <div class="info-card-title">Account Details</div>
+              <div class="info-row"><span class="info-key">user_id</span><span class="info-val" id="info-id" style="font-size:.7rem">—</span></div>
+              <div class="info-row"><span class="info-key">username</span><span class="info-val" id="info-username">—</span></div>
+              <div class="info-row"><span class="info-key">email</span><span class="info-val" id="info-email">—</span></div>
+              <div class="info-row"><span class="info-key">role</span><span class="info-val" id="info-role">—</span></div>
+            </div>
+            <div class="info-card">
+              <div class="info-card-title">Access Permissions</div>
+              <div id="permissions-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Architecture Panel ── -->
+    <div id="panel-arch" class="panel">
+      <div class="arch">
+        <h2>System Architecture</h2>
+        <div class="arch-sub">How the authentication pipeline is built</div>
+
+        <div class="arch-grid">
+          <div class="arch-card">
+            <div class="arch-card-head">
+              <div class="arch-icon icon-green">🔑</div>
+              <h3>Password Security</h3>
+            </div>
+            <p>Passwords never stored in plaintext. bcryptjs hashes with 12 salt rounds — computationally expensive to brute force. Each hash is unique even for identical passwords.</p>
+            <div class="chips">
+              <span class="code-chip">bcryptjs</span>
+              <span class="code-chip">12 salt rounds</span>
+              <span class="code-chip">compare()</span>
+            </div>
+          </div>
+
+          <div class="arch-card">
+            <div class="arch-card-head">
+              <div class="arch-icon icon-purple">🎫</div>
+              <h3>JWT Token Strategy</h3>
+            </div>
+            <p>Dual-token: short-lived access token (15 min) in memory; long-lived refresh token (7 days) in an httpOnly cookie. Prevents XSS token theft while enabling persistent sessions.</p>
+            <div class="chips">
+              <span class="code-chip">jsonwebtoken</span>
+              <span class="code-chip">httpOnly cookie</span>
+              <span class="code-chip">RS256</span>
+            </div>
+          </div>
+
+          <div class="arch-card">
+            <div class="arch-card-head">
+              <div class="arch-icon icon-red">🛡</div>
+              <h3>Role-Based Access Control</h3>
+            </div>
+            <p>Three-tier role system: admin, moderator, user. Middleware factory <code style="color:var(--accent)">requireRole(...roles)</code> guards routes. Roles embedded in JWT payload for stateless checks.</p>
+            <div class="chips">
+              <span class="code-chip">admin</span>
+              <span class="code-chip">moderator</span>
+              <span class="code-chip">user</span>
+              <span class="code-chip">requireRole()</span>
+            </div>
+          </div>
+
+          <div class="arch-card">
+            <div class="arch-card-head">
+              <div class="arch-icon icon-blue">🔄</div>
+              <h3>Session Management</h3>
+            </div>
+            <p>Silent token refresh via /api/auth/refresh every 14 minutes. On mount, app restores session from cookie. Logout clears both cookie and in-memory token atomically.</p>
+            <div class="chips">
+              <span class="code-chip">cookie-parser</span>
+              <span class="code-chip">auto-refresh</span>
+              <span class="code-chip">sameSite strict</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="token-flow">
+          <h3>Authentication Flow</h3>
+          <div class="flow-steps">
+            <div class="flow-step">User submits<br/>credentials</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">bcrypt<br/>verify hash</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">Issue<br/>access + refresh</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">Bearer on<br/>protected calls</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">Silent<br/>token refresh</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast">
+  <span>✓</span>
+  <span id="toast-msg">Success</span>
+</div>
+
+<script>
+// ── In-memory user store (demo — mirrors backend logic) ──────────────────────
+
+const USERS = new Map();
+let currentUser = null;
+let tokenExpiry  = null;
+
+function hashDemo(pw) {
+  // Demo: just store a marker — real app uses bcryptjs on backend
+  return 'hashed::' + btoa(pw);
+}
+function verifyDemo(pw, hash) {
+  return 'hashed::' + btoa(pw) === hash;
+}
+
+const ROLE_PERMS = {
+  admin:     ['read:all', 'write:all', 'delete:all', 'manage:users', 'admin:dashboard'],
+  moderator: ['read:all', 'write:content', 'moderate:content', 'mod:dashboard'],
+  user:      ['read:own', 'write:own', 'update:profile'],
+};
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('visible'));
+  document.getElementById('panel-' + id).classList.add('visible');
+  document.querySelectorAll('.nav-tab').forEach((t,i) =>
+    t.classList.toggle('active', (id === 'auth' && i === 0) || (id === 'arch' && i === 1)));
+}
+
+function switchView(view) {
+  ['login','register','dashboard'].forEach(v => {
+    const el = document.getElementById('view-' + v);
+    el.style.display = (v === view) ? (v === 'dashboard' ? 'block' : 'flex') : 'none';
+  });
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function togglePw(id, btn) {
+  const inp = document.getElementById(id);
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else                         { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
+// ── Password strength ─────────────────────────────────────────────────────────
+
+function checkStrength(pw) {
+  let score = 0;
+  if (pw.length >= 8)           score++;
+  if (/[A-Z]/.test(pw))         score++;
+  if (/[a-z]/.test(pw))         score++;
+  if (/\d/.test(pw))            score++;
+  if (/[@$!%*?&]/.test(pw))     score++;
+
+  const fill   = document.getElementById('strength-fill');
+  const label  = document.getElementById('strength-label');
+  const pct    = (score / 5) * 100;
+  const colors = ['#f05a7e','#f07850','#f0c040','#7c6af7','#4ff0b7'];
+  const labels = ['Too weak','Weak','Fair','Strong','Very strong'];
+
+  fill.style.width      = pct + '%';
+  fill.style.background = colors[score - 1] || '#1e2a40';
+  label.textContent     = score > 0 ? labels[score - 1] : 'Min 8 chars, upper, lower, number, special (@$!%*?&)';
+}
+
+function validatePassword(pw) {
+  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(pw);
+}
+
+// ── Auth actions ──────────────────────────────────────────────────────────────
+
+function handleRegister() {
+  const username = document.getElementById('reg-username').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const btn      = document.getElementById('reg-btn');
+
+  if (!username || !email || !password)
+    return showError('reg-error', 'All fields are required.');
+  if (username.length < 3)
+    return showError('reg-error', 'Username must be at least 3 characters.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    return showError('reg-error', 'Enter a valid email address.');
+  if (!validatePassword(password))
+    return showError('reg-error', 'Password needs 8+ chars, upper, lower, number, and special char (@$!%*?&).');
+  if ([...USERS.values()].find(u => u.email === email.toLowerCase()))
+    return showError('reg-error', 'Email already registered.');
+  if ([...USERS.values()].find(u => u.username.toLowerCase() === username.toLowerCase()))
+    return showError('reg-error', 'Username already taken.');
+
+  btn.disabled = true; btn.textContent = 'Creating account…';
+
+  setTimeout(() => {
+    const user = {
+      id: 'usr_' + Math.random().toString(36).slice(2, 10),
+      username, email: email.toLowerCase(),
+      password: hashDemo(password),
+      role: 'user',
+      createdAt: new Date().toISOString(),
+      lastLogin: new Date().toISOString(),
+      isActive: true,
+    };
+    USERS.set(user.id, user);
+    currentUser = user;
+    tokenExpiry  = Date.now() + 15 * 60 * 1000;
+
+    btn.disabled = false; btn.textContent = 'Create account →';
+    showDashboard(user);
+    showToast('Account created! Welcome, ' + user.username);
+  }, 900);
+}
+
+function handleLogin() {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const btn      = document.getElementById('login-btn');
+
+  if (!email || !password)
+    return showError('login-error', 'Email and password are required.');
+
+  btn.disabled = true; btn.textContent = 'Signing in…';
+
+  setTimeout(() => {
+    const user = [...USERS.values()].find(u => u.email === email.toLowerCase());
+
+    if (!user || !verifyDemo(password, user.password)) {
+      btn.disabled = false; btn.textContent = 'Sign in →';
+      return showError('login-error', 'Invalid email or password.');
+    }
+    user.lastLogin = new Date().toISOString();
+    currentUser   = user;
+    tokenExpiry    = Date.now() + 15 * 60 * 1000;
+
+    btn.disabled = false; btn.textContent = 'Sign in →';
+    showDashboard(user);
+    showToast('Signed in successfully!');
+  }, 800);
+}
+
+function handleLogout() {
+  currentUser = null; tokenExpiry = null;
+  showToast('Signed out. See you soon!');
+  setTimeout(() => switchView('login'), 600);
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+
+function showDashboard(user) {
+  switchView('dashboard');
+
+  document.getElementById('dash-username').textContent  = user.username;
+  document.getElementById('dash-sub').textContent       = `Protected route · Session active · Role: ${user.role}`;
+
+  document.getElementById('stat-role').textContent = user.role.toUpperCase();
+  const remaining = Math.round((tokenExpiry - Date.now()) / 60000);
+  document.getElementById('stat-expires').textContent = remaining + 'm';
+
+  document.getElementById('info-id').textContent       = user.id;
+  document.getElementById('info-username').textContent = user.username;
+  document.getElementById('info-email').textContent    = user.email;
+  document.getElementById('info-role').textContent     = user.role;
+
+  const badge = document.getElementById('dash-role-badge');
+  badge.textContent = '● ' + user.role;
+  badge.className   = 'role-badge badge-' + (user.role === 'admin' ? 'admin' : user.role === 'moderator' ? 'mod' : 'user');
+
+  const perms = ROLE_PERMS[user.role] || [];
+  const list  = document.getElementById('permissions-list');
+  list.innerHTML = perms.map(p =>
+    `<div class="info-row"><span class="info-key" style="color:var(--accent)">✓</span><span class="info-val">${p}</span></div>`
+  ).join('');
+}
+
+// ── Pre-seed demo users ───────────────────────────────────────────────────────
+
+const seedUsers = [
+  { id: 'usr_admin01', username: 'admin', email: 'admin@demo.com', password: hashDemo('Admin@123'), role: 'admin', createdAt: new Date().toISOString(), lastLogin: null, isActive: true },
+  { id: 'usr_mod001',  username: 'moderator', email: 'mod@demo.com', password: hashDemo('Mod@1234'), role: 'moderator', createdAt: new Date().toISOString(), lastLogin: null, isActive: true },
+];
+seedUsers.forEach(u => USERS.set(u.id, u));
+</script>
+</body>
+</html>
