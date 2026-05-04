@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> | SocialConnect</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<nav class="navbar">
+  <a href="/feed" class="brand"><span>Social</span>Connect</a>
+  <% if (currentUser) { %>
+    <div class="nav-links">
+      <a href="/feed">Feed</a>
+      <a href="/explore">Explore</a>
+      <a href="/profile/<%= currentUser.username %>">Profile</a>
+      <a href="/settings">Settings</a>
+      <form action="/logout" method="POST"><button class="logout-btn">Logout</button></form>
+    </div>
+  <% } else { %>
+    <div class="nav-links">
+      <a href="/login">Login</a>
+      <a class="nav-cta" href="/register">Register</a>
+    </div>
+  <% } %>
+</nav>
+<main>

@@ -1,0 +1,34 @@
+<%- include('partials/header') %>
+<section class="explore-wrap">
+  <div class="card search-card">
+    <h2>Explore</h2>
+    <form method="GET" action="/explore" class="search-form">
+      <input name="q" value="<%= q %>" placeholder="Search users, posts or tags...">
+      <button class="btn primary">Search</button>
+    </form>
+  </div>
+
+  <% if (q) { %>
+    <div class="card">
+      <h3>Users</h3>
+      <% if (users.length === 0) { %><p>No users found.</p><% } %>
+      <div class="user-grid">
+        <% users.forEach(user => { %>
+          <a class="user-box" href="/profile/<%= user.username %>">
+            <img src="<%= user.avatar %>" alt="avatar">
+            <strong><%= user.name %></strong>
+            <span>@<%= user.username %></span>
+          </a>
+        <% }) %>
+      </div>
+    </div>
+    <section class="feed profile-feed">
+      <h3>Posts</h3>
+      <% if (posts.length === 0) { %><div class="empty card">No posts found.</div><% } %>
+      <% posts.forEach(post => { %>
+        <%- include('partials/post', { post }) %>
+      <% }) %>
+    </section>
+  <% } %>
+</section>
+<%- include('partials/footer') %>

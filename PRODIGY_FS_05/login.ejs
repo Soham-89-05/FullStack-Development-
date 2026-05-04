@@ -1,0 +1,13 @@
+<%- include('partials/header') %>
+<section class="auth-card">
+  <h2>Welcome Back</h2>
+  <p>Login using email or username.</p>
+  <% if (error) { %><div class="alert"><%= error %></div><% } %>
+  <form method="POST" action="/login">
+    <input name="email" placeholder="Email or Username" required>
+    <input name="password" type="password" placeholder="Password" required>
+    <button class="btn primary full">Login</button>
+  </form>
+  <p class="switch">New user? <a href="/register">Create account</a></p>
+</section>
+<%- include('partials/footer') %>

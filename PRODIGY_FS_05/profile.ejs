@@ -1,0 +1,18 @@
+<%- include('partials/header') %>
+<section class="profile-header card">
+  <img class="profile-avatar large" src="<%= profileUser.avatar %>" alt="avatar">
+  <div>
+    <h1><%= profileUser.name %></h1>
+    <p>@<%= profileUser.username %></p>
+    <p><%= profileUser.bio || 'No bio added yet.' %></p>
+    <% if (currentUser.id === profileUser.id) { %><a class="btn primary" href="/settings">Edit Profile</a><% } %>
+  </div>
+</section>
+<section class="feed profile-feed">
+  <h2>Posts by <%= profileUser.name %></h2>
+  <% if (posts.length === 0) { %><div class="empty card">No posts found.</div><% } %>
+  <% posts.forEach(post => { %>
+    <%- include('partials/post', { post }) %>
+  <% }) %>
+</section>
+<%- include('partials/footer') %>

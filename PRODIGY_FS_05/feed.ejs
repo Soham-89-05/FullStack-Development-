@@ -1,0 +1,36 @@
+<%- include('partials/header') %>
+<section class="layout">
+  <aside class="sidebar card">
+    <img class="profile-avatar" src="<%= currentUser.avatar %>" alt="avatar">
+    <h3><%= currentUser.name %></h3>
+    <p>@<%= currentUser.username %></p>
+    <p class="bio"><%= currentUser.bio || 'Edit your profile and add a short bio.' %></p>
+    <a class="btn light full" href="/profile/<%= currentUser.username %>">View Profile</a>
+  </aside>
+
+  <section class="feed">
+    <div class="composer card">
+      <h2>Create Post</h2>
+      <form action="/posts" method="POST" enctype="multipart/form-data">
+        <textarea name="content" placeholder="What do you want to share today?" required></textarea>
+        <input name="tags" placeholder="Tags: travel, coding, college">
+        <label class="file-label">Upload Image/Video
+          <input type="file" name="media" accept="image/*,video/*">
+        </label>
+        <button class="btn primary">Share Post</button>
+      </form>
+    </div>
+
+    <% if (selectedTag) { %>
+      <div class="tag-filter">Showing posts tagged: <strong>#<%= selectedTag %></strong> <a href="/feed">Clear</a></div>
+    <% } %>
+
+    <% if (posts.length === 0) { %>
+      <div class="empty card">No posts yet. Create your first post!</div>
+    <% } %>
+    <% posts.forEach(post => { %>
+      <%- include('partials/post', { post }) %>
+    <% }) %>
+  </section>
+</section>
+<%- include('partials/footer') %>

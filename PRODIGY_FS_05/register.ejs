@@ -1,0 +1,15 @@
+<%- include('partials/header') %>
+<section class="auth-card">
+  <h2>Create Account</h2>
+  <p>Join SocialConnect and start sharing your thoughts.</p>
+  <% if (error) { %><div class="alert"><%= error %></div><% } %>
+  <form method="POST" action="/register">
+    <input name="name" placeholder="Full Name" required>
+    <input name="username" placeholder="Username" required>
+    <input name="email" type="email" placeholder="Email" required>
+    <input name="password" type="password" placeholder="Password minimum 6 characters" required>
+    <button class="btn primary full">Register</button>
+  </form>
+  <p class="switch">Already have an account? <a href="/login">Login</a></p>
+</section>
+<%- include('partials/footer') %>
